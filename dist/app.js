@@ -4,24 +4,21 @@ import {parameterDefinitions,DEFAULT_PARAMETERS,DEFAULT_MATCHUP,resolveParameter
 const $=id=>document.getElementById(id);
 const state={offTeam:'KC',defTeam:'SF',...DEFAULT_MATCHUP,seed:42,los:35,toGo:10,release:offense.find(p=>p.id===DEFAULT_MATCHUP.offense).time,target:'auto',mirror:false,parameters:{...DEFAULT_PARAMETERS}};
 state.release=state.parameters.releaseTime;
-$('release').value=state.release;
 let tab='o',simulation,playing=false,time=0,previous=0,batchResult=null;
 const fmt=n=>Number(n).toFixed(2),percent=n=>`${Math.round(n*100)}%`;
 const currentPlay=()=>offense.find(p=>p.id===state.offense);
+const additionalParameters=Object.keys(parameterDefinitions).filter(key=>key!=='releaseTime');
 $('target').parentElement.insertAdjacentHTML('beforebegin','<label id="frontLabel">防守前线 · 4–2–5<select id="front" aria-label="防守前线"></select></label>');
 $('front').innerHTML=fronts.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
 $('front').onchange=()=>{state.front=$('front').value;resetSimulation();};
- $('frontLabel').insertAdjacentHTML('afterend',`<details class="model-parameters"><summary>模拟参数</summary><p>本页调节即时生效；刷新后恢复配置文件默认值。参数对双方对应角色统一生效。</p>${Object.entries(parameterDefinitions).filter(([key])=>key!=='releaseTime').map(([key,d])=>`<label>${d.label}<output id="parameter-value-${key}"></output><input id="parameter-${key}" type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${d.default}" aria-label="${d.label}"><small>${d.help}</small></label>`).join('')}<div id="releaseParameterHelp">${parameterDefinitions.releaseTime.help}</div><button id="resetParameters" class="quiet" type="button">恢复默认参数</button></details>`);
-const releaseControl=$('release').parentElement;
-releaseControl.firstChild.textContent=parameterDefinitions.releaseTime.label+' ';
-releaseControl.insertAdjacentHTML('beforeend',`<small>${parameterDefinitions.releaseTime.help}</small>`);
-$('releaseParameterHelp').before(releaseControl);
+ $('frontLabel').insertAdjacentHTML('afterend',`<details class="model-parameters"><summary>模拟参数</summary><p>本页调节即时生效；刷新后恢复配置文件默认值。参数对双方对应角色统一生效。</p><label>${parameterDefinitions.releaseTime.label}<output id="releaseValue"></output><input id="release" type="range" min="${parameterDefinitions.releaseTime.min}" max="${parameterDefinitions.releaseTime.max}" step="${parameterDefinitions.releaseTime.step}" value="${state.release}" aria-label="${parameterDefinitions.releaseTime.label}"><small>${parameterDefinitions.releaseTime.help}</small></label>${additionalParameters.map(key=>{const d=parameterDefinitions[key];return `<label>${d.label}<output id="parameter-value-${key}"></output><input id="parameter-${key}" type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${d.default}" aria-label="${d.label}"><small>${d.help}</small></label>`;}).join('')}<button id="resetParameters" class="quiet" type="button">恢复默认参数</button></details>`);
+$('releaseValue').textContent=`${state.release.toFixed(1)} s`;
 function showParameter(key){const d=parameterDefinitions[key],v=state.parameters[key];$('parameter-value-'+key).textContent=d.unit==='%'?`${Math.round(v*100)}%`:`${v.toFixed(2)}${d.unit}`;}
-for(const key of Object.keys(parameterDefinitions)){
+for(const key of additionalParameters){
  showParameter(key);
  $('parameter-'+key).oninput=()=>{state.parameters=resolveParameters({...state.parameters,[key]:Number($('parameter-'+key).value)});showParameter(key);resetSimulation();};
 }
-$('resetParameters').onclick=()=>{state.parameters={...DEFAULT_PARAMETERS};state.release=state.parameters.releaseTime;$('release').value=state.release;$('releaseValue').textContent=`${state.release.toFixed(1)} s`;for(const key of Object.keys(parameterDefinitions).filter(key=>key!=='releaseTime')){$('parameter-'+key).value=state.parameters[key];showParameter(key);}resetSimulation();};
+$('resetParameters').onclick=()=>{state.parameters={...DEFAULT_PARAMETERS};state.release=state.parameters.releaseTime;$('release').value=state.release;$('releaseValue').textContent=`${state.release.toFixed(1)} s`;for(const key of additionalParameters){$('parameter-'+key).value=state.parameters[key];showParameter(key);}resetSimulation();};
 for(const id of ['offTeam','defTeam']){
  $(''+id).innerHTML=teams.map(t=>`<option value="${t.id}">${t.id} · ${t.zh}</option>`).join('');$(id).value=state[id];
  $(id).addEventListener('change',()=>{state[id]=$(id).value;const side=id==='offTeam'?'offense':'defense';state[side]=teamDefaults(state[id])[side];if(side==='offense'){state.release=currentPlay().time;state.parameters.releaseTime=state.release;$('release').value=state.release;$('releaseValue').textContent=`${state.release.toFixed(1)} s`;}$(id==='offTeam'?'offAbbr':'defAbbr').textContent=state[id];resetSimulation();renderCards();});

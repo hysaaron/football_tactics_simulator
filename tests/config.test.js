@@ -5,9 +5,16 @@ import {simulate,batch} from '../dist/engine.js';
 
 test('parameters default, preserve zero, clamp bounds and reject non-numeric values',()=>{
  assert.deepEqual(resolveParameters(),DEFAULT_PARAMETERS);
- assert.deepEqual(resolveParameters({passDepthWeight:0,catchAbility:0,breakTackleChance:0,shedBlockChance:0}),{passDepthWeight:0,catchAbility:0,breakTackleChance:0,shedBlockChance:0});
- assert.deepEqual(resolveParameters({passDepthWeight:-5,catchAbility:Infinity,breakTackleChance:5,shedBlockChance:'bad'}),{passDepthWeight:0,catchAbility:DEFAULT_PARAMETERS.catchAbility,breakTackleChance:1,shedBlockChance:DEFAULT_PARAMETERS.shedBlockChance});
+ assert.deepEqual(resolveParameters({releaseTime:0,passDepthWeight:0,catchAbility:0,breakTackleChance:0,shedBlockChance:0}),{releaseTime:0.8,passDepthWeight:0,catchAbility:0,breakTackleChance:0,shedBlockChance:0});
+ assert.deepEqual(resolveParameters({releaseTime:10,passDepthWeight:-5,catchAbility:Infinity,breakTackleChance:5,shedBlockChance:'bad'}),{releaseTime:4.5,passDepthWeight:0,catchAbility:DEFAULT_PARAMETERS.catchAbility,breakTackleChance:1,shedBlockChance:DEFAULT_PARAMETERS.shedBlockChance});
  assert.deepEqual(resolveParameters(null),DEFAULT_PARAMETERS);
+});
+test('release timing parameter changes the pass event when no explicit release is supplied',()=>{
+ const run=releaseTime=>simulate({offense:'mesh',seed:42,parameters:{releaseTime,shedBlockChance:0}});
+ const passTime=result=>result.events.find(e=>e.text.startsWith('出手'))?.time;
+ assert.equal(passTime(run(1)),1);
+ assert.equal(passTime(run(2)),2);
+ assert.equal(passTime(simulate({offense:'mesh',seed:42,release:1.5,parameters:{releaseTime:2,shedBlockChance:0}})),1.5);
 });
 test('depth weighting changes automatic selection but not manual targeting',()=>{
  const run=(weight,target='auto')=>simulate({offense:'mesh',release:1.5,target,seed:42,parameters:{passDepthWeight:weight,shedBlockChance:0}});
@@ -48,7 +55,7 @@ test('block shedding affects rush movement and is not rolled every frame',()=>{
  assert.ok(high.events.filter(e=>e.time<=0.4&&e.text.includes('摆脱')).length<=20);
 });
 test('configured simulation and batch use the same settings reproducibly',()=>{
- const config={offense:'drawn-cross',defense:'cover6-w-blitz',seed:73,parameters:{passDepthWeight:0.8,catchAbility:1.5,breakTackleChance:0.7,shedBlockChance:0.8}};
+ const config={offense:'drawn-cross',defense:'cover6-w-blitz',seed:73,parameters:{releaseTime:2.8,passDepthWeight:0.8,catchAbility:1.5,breakTackleChance:0.7,shedBlockChance:0.8}};
  const a=simulate(config),b=simulate(config),mirrored=simulate({...config,mirror:true});
  assert.deepEqual(a,b);assert.deepEqual(a.config.parameters,config.parameters);assert.deepEqual(a.result,mirrored.result);
  const results=Array.from({length:10},(_,i)=>simulate({...config,seed:73+i}).result);
